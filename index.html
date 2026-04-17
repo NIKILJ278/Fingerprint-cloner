@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fingerprint Cloner - Visual Reconstruction</title>
+    <style>
+        :root {
+            --neon: #2ecc71;
+            --bg: #050505;
+            --slice-height: 48px; 
+            --denied: #e74c3c;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--neon);
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+            text-transform: uppercase;
+        }
+
+        body::before {
+            content: " ";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%);
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .interface {
+            width: 850px;
+            border: 2px solid var(--neon);
+            padding: 20px;
+            background: rgba(0, 20, 0, 0.1);
+            box-shadow: 0 0 20px rgba(46, 204, 113, 0.2);
+            position: relative;
+        }
+
+        #popup {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 400px;
+            padding: 30px;
+            text-align: center;
+            background: black;
+            border: 3px solid var(--neon);
+            z-index: 100;
+            box-shadow: 0 0 50px rgba(0,0,0,1);
+            animation: flicker 0.15s infinite;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.9; }
+            100% { opacity: 1; }
+        }
+
+        #popup.denied {
+            border-color: var(--denied);
+            color: var(--denied);
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 2px solid var(--neon);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .game-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        h3 {
+            background: var(--neon);
+            color: black;
+            padding: 4px 10px;
+            margin: 0 0 15px 0;
+            font-size: 14px;
+        }
+
+        .component-box {
+            display: flex;
+            flex-direction: column;
+            gap: 0px; 
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .reel {
+            height: var(--slice-height);
+            border-bottom: 1px solid rgba(26, 94, 53, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 5px;
+        }
+
+        .nav-btn {
+            background: transparent;
+            color: var(--neon);
+            border: 1px solid #1a5e35;
+            cursor: pointer;
+            padding: 5px 12px;
+            font-weight: bold;
+            font-family: inherit;
+        }
+
+        .nav-btn:hover {
+            background: var(--neon);
+            color: black;
+        }
+
+        .slice-view {
+            width: 180px;
+            height: 100%;
+            background-repeat: no-repeat;
+            background-size: 180px 384px; 
+        }
+
+        .target-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            opacity: 0.7;
+        }
+
+        .target-image {
+            width: 180px;
+            height: 384px;
+            background-size: 100% 100%;
+            border: 1px solid rgba(46, 204, 113, 0.3);
+        }
+
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #check-btn {
+            background: var(--neon);
+            color: black;
+            border: none;
+            padding: 10px 60px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 18px;
+            letter-spacing: 2px;
+        }
+
+        #check-btn:hover {
+            background: #fff;
+        }
+
+        #hint-btn {
+            background: transparent;
+            color: var(--neon);
+            border: 1px solid var(--neon);
+            padding: 10px 30px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 18px;
+            letter-spacing: 2px;
+            margin-right: 15px;
+        }
+
+        #hint-btn:hover {
+            background: rgba(46, 204, 113, 0.1);
+        }
+
+        #points-box {
+            background: rgba(231, 76, 60, 0.1);
+            border: 1px solid var(--denied);
+            color: var(--denied);
+            padding: 5px 15px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            font-weight: bold;
+        }
+
+        .popup-btns {
+            display: none;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .confirm-btn {
+            background: var(--neon);
+            color: black;
+            border: none;
+            padding: 8px 25px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .confirm-btn:hover {
+            background: #fff;
+        }
+
+        .cancel-btn {
+            background: transparent;
+            color: var(--neon);
+            border: 1px solid var(--neon);
+            padding: 8px 25px;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        .cancel-btn:hover {
+            background: rgba(46, 204, 113, 0.1);
+        }
+
+        #start-screen {
+            position: absolute;
+            inset: 0;
+            background: rgba(5, 5, 5, 0.98);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            text-align: center;
+        }
+
+        #start-btn {
+            background: var(--neon);
+            color: black;
+            border: none;
+            padding: 20px 60px;
+            font-family: inherit;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 24px;
+            letter-spacing: 5px;
+            box-shadow: 0 0 30px rgba(46, 204, 113, 0.3);
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        #start-btn:hover {
+            background: #fff;
+            box-shadow: 0 0 40px rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+        }
+
+        .glitch-text {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            letter-spacing: 10px;
+            text-shadow: 2px 2px var(--denied);
+        }
+
+        .scorecard {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 15px;
+            margin-top: 20px;
+            text-align: left;
+            background: rgba(46, 204, 113, 0.05);
+            padding: 20px;
+            border: 1px solid rgba(46, 204, 113, 0.2);
+        }
+
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px dashed rgba(46, 204, 113, 0.3);
+            padding-bottom: 5px;
+            font-size: 16px;
+        }
+
+        .score-label {
+            color: var(--neon);
+            opacity: 0.8;
+        }
+
+        .score-value {
+            color: white;
+            font-weight: bold;
+        }
+        .important-note {
+            border: 1px solid var(--denied);
+            color: var(--denied);
+            padding: 10px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            text-align: center;
+            letter-spacing: 2px;
+            font-weight: bold;
+            background: rgba(231, 76, 60, 0.05);
+            animation: pulse-border 2s infinite;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+        }
+
+        .important-note::before, .important-note::after {
+            content: "!!!";
+            opacity: 0.6;
+        }
+
+        @keyframes pulse-border {
+            0% { border-color: rgba(231, 76, 60, 0.5); box-shadow: 0 0 5px rgba(231, 76, 60, 0.1); }
+            50% { border-color: rgba(231, 76, 60, 1); box-shadow: 0 0 15px rgba(231, 76, 60, 0.3); }
+            100% { border-color: rgba(231, 76, 60, 0.5); box-shadow: 0 0 5px rgba(231, 76, 60, 0.1); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="interface">
+    <div id="start-screen">
+        <h1 class="glitch-text">FINGERPRINT</h1>
+        <h1 class="glitch-text" style="font-size: 1.5rem; margin-top: -10px; opacity: 0.8;">CLONER SYSTEM</h1>
+        <button id="start-btn" onclick="startGame()">INITIALIZE</button>
+    </div>
+
+    <div id="popup">
+        <h1 id="popup-title">SUCCESSFUL</h1>
+        <p id="popup-text">ACCESS GRANTED</p>
+        <div id="popup-btns" class="popup-btns">
+            <button class="confirm-btn" onclick="handleConfirm(true)">YES</button>
+            <button class="cancel-btn" onclick="handleConfirm(false)">NO</button>
+        </div>
+    </div>
+
+    <div class="header">
+        <div>COPIER STATUS: <span id="stage-info">STAGE 1/3</span></div>
+        <div id="points-box">POINTS: 50</div>
+        <div id="timer">TIMEOUT: 02:00:00</div>
+    </div>
+
+    <div class="important-note">
+        IMPORTANT: MATCH THE COMPONENTS ACCORDING TO THE CLONE TARGET
+    </div>
+
+    <div class="game-grid">
+        <section>
+            <h3>COMPONENTS</h3>
+            <div id="reels-container" class="component-box"></div>
+        </section>
+
+        <section>
+            <h3>CLONE TARGET</h3>
+            <div class="target-box">
+                <div id="target-img" class="target-image"></div>
+            </div>
+        </section>
+    </div>
+
+    <div class="footer">
+        <button id="hint-btn" onclick="showHint()">HINT</button>
+        <button id="check-btn" onclick="manualCheck()">CHECK MATCH</button>
+    </div>
+</div>
+
+<script>
+    const fingerprints = [
+        'image_1.png', 
+        'image_2.png',
+        'image_3.jpeg'
+    ];
+
+    let currentStage = 0;
+    const totalSlices = 8;
+    let playerChoices = []; 
+    let timerInterval;
+    let points = 50;
+    let hintUsed = false;
+
+    // Original pattern system (UNCHANGED)
+    const solutionPatterns = [
+        [0, 2, 4, 6, 1, 3, 5, 7],
+        [7, 5, 3, 1, 6, 4, 2, 0],
+        [1, 3, 5, 7, 0, 2, 4, 6]
+    ];
+
+    // 🔥 NEW: shuffled order per bar (only for navigation)
+    let sliceOrders = [];
+
+    function makeShuffledOrder(n) {
+        const arr = Array.from({ length: n }, (_, i) => i);
+        for (let i = n - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    function initStage(stageIndex) {
+        const container = document.getElementById('reels-container');
+        const targetImg = document.getElementById('target-img');
+        container.innerHTML = '';
+        
+        targetImg.style.backgroundImage = `url(${fingerprints[stageIndex]})`;
+        
+        // Original random start (UNCHANGED)
+        playerChoices = Array.from({length: totalSlices}, () => Math.floor(Math.random() * 8));
+
+        // 🔥 NEW: shuffle navigation order per bar
+        sliceOrders = Array.from({length: totalSlices}, () => makeShuffledOrder(8));
+
+        for (let i = 0; i < totalSlices; i++) {
+            const reel = document.createElement('div');
+            reel.className = 'reel';
+            reel.innerHTML = `
+                <button class="nav-btn" onclick="rotateSlice(${i}, -1)">&lt;</button>
+                <div class="slice-view" id="slice-${i}"></div>
+                <button class="nav-btn" onclick="rotateSlice(${i}, 1)">&gt;</button>
+            `;
+            container.appendChild(reel);
+            updateSliceVisual(i);
+        }
+    }
+
+    function rotateSlice(index, direction) {
+        // 🔥 CHANGED: move inside shuffled order instead of +1/-1
+        const order = sliceOrders[index];
+        let pos = order.indexOf(playerChoices[index]);
+        pos = (pos + direction + order.length) % order.length;
+        playerChoices[index] = order[pos];
+        updateSliceVisual(index);
+    }
+
+    function updateSliceVisual(index) {
+        const slice = document.getElementById(`slice-${index}`);
+        const currentSolution = solutionPatterns[currentStage];
+        
+        // Original visual logic (UNCHANGED)
+        const visualTargetIndex = index;
+        const userChoice = playerChoices[index];
+        const requiredChoice = currentSolution[index];
+        
+        const visualOffsetIndex = (userChoice - requiredChoice + visualTargetIndex + 8) % 8;
+        const yOffset = (visualOffsetIndex * 48) * -1;
+        
+        slice.style.backgroundImage = `url(${fingerprints[currentStage]})`;
+        slice.style.backgroundPositionY = `${yOffset}px`;
+    }
+
+    function updatePointsDisplay() {
+        document.getElementById('points-box').innerText = `POINTS: ${points}`;
+    }
+
+    function showHint() {
+        if (hintUsed) {
+            showPopup('hint');
+        } else {
+            showPopup('confirm-hint');
+        }
+    }
+
+    function handleConfirm(agreed) {
+        document.getElementById('popup-btns').style.display = "none";
+        document.getElementById('popup').style.display = "none";
+        
+        if (agreed) {
+            points -= 20;
+            hintUsed = true;
+            updatePointsDisplay();
+            showPopup('hint');
+        }
+    }
+
+    function manualCheck() {
+        const currentSolution = solutionPatterns[currentStage];
+        
+        let firstFiveCorrect = true;
+        for (let i = 0; i < 5; i++) {
+            if (playerChoices[i] !== currentSolution[i]) {
+                firstFiveCorrect = false;
+                break;
+            }
+        }
+        
+        if (firstFiveCorrect) {
+            showPopup('success');
+        } else {
+            showPopup('denied');
+        }
+    }
+
+    function showPopup(type) {
+        const popup = document.getElementById('popup');
+        const title = document.getElementById('popup-title');
+        const text = document.getElementById('popup-text');
+
+        if (type === 'success') {
+            popup.classList.remove('denied');
+            title.innerText = "SUCCESSFUL";
+            text.innerText = "FRAGMENT ALIGNMENT VALIDATED";
+            popup.style.display = "block";
+            
+            setTimeout(() => {
+                popup.style.display = "none";
+                if (currentStage < 2) {
+                    currentStage++;
+                    document.getElementById('stage-info').innerText = `STAGE ${currentStage + 1}/3`;
+                    initStage(currentStage);
+                } else {
+                    clearInterval(timerInterval);
+                    const m = Math.floor(seconds / 60);
+                    const s = seconds % 60;
+                    const timeStr = `0${m}:${s < 10 ? '0' + s : s}`;
+                    
+                    title.innerText = "SEQUENCE COMPLETE";
+                    text.innerHTML = `
+                        <div class="scorecard">
+                            <div class="score-item">
+                                <span class="score-label">STAGES CLEARED:</span>
+                                <span class="score-value">3 / 3</span>
+                            </div>
+                            <div class="score-item">
+                                <span class="score-label">TIME REMAINING:</span>
+                                <span class="score-value">${timeStr}</span>
+                            </div>
+                            <div class="score-item">
+                                <span class="score-label">FINAL SCORE:</span>
+                                <span class="score-value">${points} PTS</span>
+                            </div>
+                        </div>
+                    `;
+                    popup.classList.remove('denied');
+                    popup.style.display = "block";
+                    document.getElementById('check-btn').style.display = "none";
+                }
+            }, 1800);
+
+        } else if (type === 'denied') {
+            popup.classList.add('denied');
+            title.innerText = "FAILED";
+            text.innerText = "PATTERN MISMATCH DETECTED";
+            popup.style.display = "block";
+            setTimeout(() => { popup.style.display = "none"; }, 1200);
+        } else if (type === 'timeout') {
+            popup.classList.add('denied');
+            title.innerText = "TIMEOUT";
+            text.innerHTML = `
+                <div class="scorecard" style="border-color: var(--denied); background: rgba(231, 76, 60, 0.05);">
+                    <div class="score-item" style="border-color: rgba(231, 76, 60, 0.3);">
+                        <span class="score-label" style="color: var(--denied);">STAGES CLEARED:</span>
+                        <span class="score-value">${currentStage} / 3</span>
+                    </div>
+                    <div class="score-item" style="border-color: rgba(231, 76, 60, 0.3);">
+                        <span class="score-label" style="color: var(--denied);">TIME REMAINING:</span>
+                        <span class="score-value">00:00</span>
+                    </div>
+                    <div class="score-item" style="border-color: rgba(231, 76, 60, 0.3);">
+                        <span class="score-label" style="color: var(--denied);">TOTAL POINTS:</span>
+                        <span class="score-value">${points} PTS</span>
+                    </div>
+                    <div class="score-item" style="border-color: transparent;">
+                        <span class="score-label" style="color: var(--denied);">STATUS:</span>
+                        <span class="score-value">ABORTED</span>
+                    </div>
+                </div>
+            `;
+            popup.style.display = "block";
+            document.getElementById('check-btn').style.display = "none";
+        } else if (type === 'hint') {
+            popup.classList.remove('denied');
+            title.innerText = "HINT";
+            text.innerText = "IF U MATCH 80% OF THE FINGERPRINT U CAN PROCCED";
+            popup.style.display = "block";
+            setTimeout(() => { popup.style.display = "none"; }, 3000);
+        } else if (type === 'confirm-hint') {
+            popup.classList.remove('denied');
+            title.innerText = "CONFIRMATION";
+            text.innerText = "WILL U WANT TO LOOSE 20 POINTS FOR A HINT?";
+            document.getElementById('popup-btns').style.display = "flex";
+            popup.style.display = "block";
+        }
+    }
+
+    let seconds = 120; 
+
+    function startGame() {
+        document.getElementById('start-screen').style.display = 'none';
+        initStage(0);
+        
+        timerInterval = setInterval(() => {
+            seconds--;
+            
+            if (seconds <= 0) {
+                clearInterval(timerInterval);
+                document.getElementById('timer').innerText = `TIMEOUT: 00:00`;
+                
+                points -= 50;
+                updatePointsDisplay();
+
+                showPopup('timeout'); 
+                return;
+            }
+
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            document.getElementById('timer').innerText = `TIMEOUT: 0${m}:${s < 10 ? '0' + s : s}`;
+        }, 1000);
+    }
+</script>
+
+</body>
+</html>
